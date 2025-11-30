@@ -3,6 +3,7 @@
 #include "headers/parser.h"
 #include "headers/sys_includes.h"
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
 #include <poll.h>
@@ -40,8 +41,7 @@ int main() {
 
   char ip4_buff[INET_ADDRSTRLEN];
   char peer_buff[INET_ADDRSTRLEN];
-  char server_rep[1024];
-  char exit;
+  char exit = '\0';
   client_responses client_responses;
 
   memset(&hints, 0, sizeof(hints));
@@ -68,10 +68,10 @@ int main() {
     break;
   }
   if (success_addr->ai_family == AF_INET) {
-    s = success_addr->ai_addr;
-    inet_ntop(success_addr->ai_family,
-              (struct sockaddr_in *)success_addr->ai_addr, ip4_buff,
-              success_addr->ai_addrlen);
+    struct sockaddr_in *addr = (struct sockaddr_in *)success_addr->ai_addr;
+
+    inet_ntop(AF_INET, &addr->sin_addr, ip4_buff, INET_ADDRSTRLEN);
+
     printf("\nbind succesful at IP %s\n", ip4_buff);
     printf("socket descriptor %d\n", socket_fd);
   }
@@ -122,27 +122,45 @@ int main() {
 
     // Check on existing sockets for action
     for (int i = 1; i < nfds; i++) {
-      if (fds[i].revents & POLLIN) {
 
-        field_values request_headers;
-        Irequest_line request_line;
-        Istatus_line status_line;
+      field_values request_headers[MAX_FIELD_LINES];
+      Irequest_line request_line;
+      Istatus_line status_line;
 
-        int n = recv(fds[i].fd, client_responses.responses[i].buffer,
-                     sizeof(client_responses.responses[i].buffer) - 1, 0);
-        if (n == 0) {
-          printf("\nClinet Disconnected");
+      // If this socket has no incoming data, skip it entirely
+      if (!(fds[i].revents & POLLIN))
+        continue;
+
+      int n = recv(fds[i].fd, client_responses.responses[i].buffer,
+                   sizeof(client_responses.responses[i].buffer) - 1, 0);
+
+      if (n < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          continue;
         } else {
-          client_responses.responses[i].buffer[n] = '\0';
+          perror("recv");
+          close(fds[i].fd);
+          continue;
         }
-        request_parser(client_responses.responses[i].buffer, &request_line,
-                       &status_line, &request_headers);
-        printf("%s", request_line.request_target);
-        printf("%s", request_line.method);
-        printf("%c", request_headers.field_value[1]);
       }
 
-      break;
+      if (n == 0) {
+        printf("Client disconnected\n");
+        close(fds[i].fd);
+        continue;
+      }
+
+      client_responses.responses[i].buffer[n] = '\0';
+
+      request_parser(client_responses.responses[i].buffer, &request_line,
+                     &status_line, request_headers);
+
+      printf("%s\n", request_line.request_target);
+      printf("%s\n", request_line.method);
+      for (int x = 0; x < 3; x++) {
+        printf("%s\n", request_headers[x].field_value);
+      }
+      fds[i].revents = 0;
     }
 
     /* int scan_fd = scanf("%c", &exit);
@@ -156,9 +174,9 @@ int main() {
 
   if (fds[0].events & POLL_HUP) {
     freeaddrinfo(res);
-    for (int i = nfds; i >= 0; i--) {
+    /* for (int i = nfds; i >= 0; i--) {
       close(fds[i].fd);
-    }
+    } */
     close(socket_fd);
   }
 }

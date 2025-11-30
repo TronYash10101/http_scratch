@@ -1,5 +1,7 @@
 #include "headers/parser.h"
-#include "utils/headers/leading_whitespace.h"
+#include "headers/leading_whitespace.h"
+#include <stdio.h>
+#include <string.h>
 
 void request_line_parser(const char *restrict request_line_ptr,
                          Irequest_line *request_line) {
@@ -45,7 +47,7 @@ int hash_key(char *field_name) {
 }
 
 void request_headers_parser(const char *restrict header,
-                            field_values *headers) {
+                            field_values headers[]) {
 
   int word_count = 0;
 
@@ -60,11 +62,11 @@ void request_headers_parser(const char *restrict header,
       return;
     }
 
-    if (header[word_count] == '\r' && header[word_count + 1] == '\n') {
+    /* if (header[word_count] == '\r' && header[word_count + 1] == '\n') {
       // This function is used to only parse headers nothing else so it should
       // end with \r\n\r\n, NULL terminator is after request body
       break;
-    }
+    } */
 
     int name_word_count;
     for (name_word_count = 0; header[word_count] != ':'; name_word_count++) {
@@ -91,29 +93,33 @@ void request_headers_parser(const char *restrict header,
       word_count += 2;
     }
     int index = hash_key(field_name_buffer);
-    strcpy(headers->field_value, leading_whitespace(field_value_buffer));
+    if (index == -1) {
+      break;
+    }
+    // Add index to headers like before it is a hashmap
+    strcpy(headers[index].field_value, leading_whitespace(field_value_buffer));
     memset(field_name_buffer, 0, sizeof(field_name_buffer));
     memset(field_value_buffer, 0, sizeof(field_value_buffer));
   }
 }
 
 void request_parser(const char *restrict req_get, Irequest_line *request_line,
-                    Istatus_line *status_line, field_values *headers) {
+                    Istatus_line *status_line, field_values headers[]) {
 
   int crlf = 0;
   char buffer[2048];
   int buffer_count = 0;
   int word_count = 0;
-
   for (word_count = 0;
        !(req_get[word_count - 3] == '\r' && req_get[word_count - 2] == '\n' &&
          req_get[word_count - 1] == '\r' && req_get[word_count] == '\n');
        word_count++) {
 
-    int condition =
-        (req_get[word_count - 3] == '\r' && req_get[word_count - 2] == '\n' &&
-         req_get[word_count - 1] == '\r' && req_get[word_count] == '\n');
-
+    // int condition =
+    //     (req_get[word_count - 3] == '\r' && req_get[word_count - 2] == '\n'
+    //     &&
+    //      req_get[word_count - 1] == '\r' && req_get[word_count] == '\n');
+    //
     if (crlf == 0 &&
         (req_get[word_count] == '\r' && req_get[word_count + 1] == '\n')) {
       buffer[buffer_count] = '\0';

@@ -1,4 +1,4 @@
-#include "headers/leading_whitespace.h"
+#include "../headers/leading_whitespace.h"
 #include <stdio.h>
 #include <string.h>
 

@@ -3,7 +3,7 @@
 #ifndef MESSAGE
 #define MESSAGE
 
-#define MAX_HEADERS 4
+#define MAX_FIELD_LINES 4
 
 /* typedef struct {
   char Host[1024];
