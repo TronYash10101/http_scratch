@@ -2,9 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 
-route routes[] = {{"home", "Home Page"},
-                  {"about", "About Page"},
-                  {"contact", "Contact Page"}};
+route routes[] = {{"/", "Default Page"},
+                  {"/home", "Home Page"},
+                  {"/about", "About Page"},
+                  {"/contact", "Contact Page"}};
 
 void format_response(char *buffer, size_t buff_size, Istatus_line *status_line,
                      const char *response, const char *content_type) {
@@ -47,9 +48,9 @@ void get_request(char *response_buffer, Istatus_line *status_line,
        request_target[req_target_word_count] != '\0';
        req_target_word_count++) {
 
-    if (request_target[req_target_word_count] == '/') {
+    /* if (request_target[req_target_word_count] == '/') {
       continue;
-    }
+    } */
 
     target_buffer[buffer_word_count++] = request_target[req_target_word_count];
   }

@@ -46,6 +46,7 @@ int main() {
   char peer_buff[INET_ADDRSTRLEN];
   char exit = '\0';
   client_responses client_responses;
+  int opt = 1;
 
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
@@ -70,6 +71,9 @@ int main() {
     success_addr = p;
     break;
   }
+
+  setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
   if (success_addr->ai_family == AF_INET) {
     struct sockaddr_in *addr = (struct sockaddr_in *)success_addr->ai_addr;
 
@@ -156,13 +160,14 @@ int main() {
       client_responses.responses[i].buffer[n] = '\0';
       request_parser(client_responses.responses[i].buffer, &request_line,
                      &request_header);
+
       get_request(response_buffer, &status_line, request_line.request_target);
+      printf("%d", status_line.status_code);
       bytes_send = send(fds[i].fd, response_buffer, strlen(response_buffer), 0);
-      printf("%d", bytes_send);
+      printf("this is data%s", response_buffer);
       close(fds[i].fd);
       fds[i] = fds[nfds - 1];
       nfds--;
-      i--;
     }
 
     /* if (exit == 'e') {
