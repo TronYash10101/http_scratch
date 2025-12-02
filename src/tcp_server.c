@@ -162,9 +162,8 @@ int main() {
                      &request_header);
 
       get_request(response_buffer, &status_line, request_line.request_target);
-      printf("%d", status_line.status_code);
+      printf("%s", response_buffer);
       bytes_send = send(fds[i].fd, response_buffer, strlen(response_buffer), 0);
-      printf("this is data%s", response_buffer);
       close(fds[i].fd);
       fds[i] = fds[nfds - 1];
       nfds--;

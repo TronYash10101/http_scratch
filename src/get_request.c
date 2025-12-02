@@ -9,9 +9,8 @@ route routes[] = {{"/", "Default Page"},
 
 void format_response(char *buffer, size_t buff_size, Istatus_line *status_line,
                      const char *response, const char *content_type) {
-  size_t buffer_max_size = strlen(buffer);
   int content_len = strlen(response);
-  snprintf(buffer, buffer_max_size,
+  snprintf(buffer, buff_size,
            "%s %d\r\nContent-Length: %d\r\nContent-Type: %s\r\n\r\n%s",
            status_line->http_version, status_line->status_code, content_len,
            content_type, response);
