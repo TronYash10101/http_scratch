@@ -6,7 +6,9 @@ TARGET = bin/tcp_server
 SRC = \
     src/tcp_server.c \
     src/parser.c \
-    src/utils/leading_whitespace.c
+    src/get_request.c \
+    src/utils/leading_whitespace.c \
+    src/utils/lower_string.c
 
 # Transform src/xxx.c → builds/src/xxx.o
 OBJ = $(SRC:src/%.c=builds/%.o)

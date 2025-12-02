@@ -2,6 +2,7 @@
 #include "headers/leading_whitespace.h"
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
 void request_line_parser(const char *restrict request_line_ptr,
                          Irequest_line *request_line) {
@@ -19,41 +20,63 @@ void response_line_parser(const char *restrict http_version, int status_code,
   }
   memcpy(status_line->http_version, http_version, strlen(http_version));
   status_line->status_code = status_code;
-  memcpy(status_line->reason_phrase, reason_pharse, strlen(reason_pharse));
   return;
 }
 
-int hash_key(char *field_name) {
-  char word_buffer[1024];
-  int word_count;
-
-  for (word_count = 0; field_name[word_count] != '\0'; word_count++) {
-    char lowered_char = tolower(field_name[word_count]);
-    word_buffer[word_count] = lowered_char;
+// Change this to Hash Table
+void fill_headers(request_headers *headers, const char *field_name_buffer,
+                  const char *field_value_buffer) {
+  if (strcasecmp(field_name_buffer, "Host") == 0) {
+    snprintf(headers->Host, sizeof(headers->Host), "%s", field_value_buffer);
   }
-  word_buffer[word_count] = '\0';
 
-  if (strcmp(word_buffer, "host") == 0) {
-    return 0;
-  } else if (strcmp(word_buffer, "content-length") == 0) {
-    return 1;
-  } else if (strcmp(word_buffer, "content-type") == 0) {
-    return 2;
-  } else if (strcmp(word_buffer, "transfer-encoding") == 0) {
-    return 3;
-  } else {
-    return -1;
+  else if (strcasecmp(field_name_buffer, "Content-Length") == 0) {
+    snprintf(headers->Content_Length, sizeof(headers->Content_Length), "%s",
+             field_value_buffer);
+  }
+
+  else if (strcasecmp(field_name_buffer, "Content-Type") == 0) {
+    snprintf(headers->Content_Type, sizeof(headers->Content_Type), "%s",
+             field_value_buffer);
+  }
+
+  else if (strcasecmp(field_name_buffer, "User-Agent") == 0) {
+    snprintf(headers->User_Agent, sizeof(headers->User_Agent), "%s",
+             field_value_buffer);
+  }
+
+  else if (strcasecmp(field_name_buffer, "Accept") == 0) {
+    snprintf(headers->Accept, sizeof(headers->Accept), "%s",
+             field_value_buffer);
+  }
+
+  else if (strcasecmp(field_name_buffer, "Connection") == 0) {
+    snprintf(headers->Connection, sizeof(headers->Connection), "%s",
+             field_value_buffer);
+  }
+
+  else if (strcasecmp(field_name_buffer, "Accept-Encoding") == 0) {
+    snprintf(headers->Accept_Encoding, sizeof(headers->Accept_Encoding), "%s",
+             field_value_buffer);
+  }
+
+  else if (strcasecmp(field_name_buffer, "Accept-Language") == 0) {
+    snprintf(headers->Accept_Language, sizeof(headers->Accept_Language), "%s",
+             field_value_buffer);
+  }
+
+  else {
   }
 }
-
 void request_headers_parser(const char *restrict header,
-                            field_values headers[]) {
+                            request_headers *headers) {
 
   int word_count = 0;
 
   while (1) {
     char field_name_buffer[500];
     char field_value_buffer[500];
+    char curr_field_name[500];
     bool recording_value = false;
 
     if (header[word_count] == '\0' || header[word_count + 1] == '\0') {
@@ -62,11 +85,11 @@ void request_headers_parser(const char *restrict header,
       return;
     }
 
-    /* if (header[word_count] == '\r' && header[word_count + 1] == '\n') {
-      // This function is used to only parse headers nothing else so it should
-      // end with \r\n\r\n, NULL terminator is after request body
+    if (header[word_count] == '\r' && header[word_count + 1] == '\n') {
+      // This function is used to only parse headers nothing else so it
+      // should end with \r\n\r\n, NULL terminator is after request body
       break;
-    } */
+    }
 
     int name_word_count;
     for (name_word_count = 0; header[word_count] != ':'; name_word_count++) {
@@ -76,6 +99,7 @@ void request_headers_parser(const char *restrict header,
 
     if (header[word_count] == ':') {
       field_name_buffer[name_word_count] = '\0';
+      strcpy(curr_field_name, field_name_buffer);
       recording_value = true;
       word_count++;
     }
@@ -92,19 +116,19 @@ void request_headers_parser(const char *restrict header,
       field_value_buffer[value_word_count] = '\0';
       word_count += 2;
     }
-    int index = hash_key(field_name_buffer);
-    if (index == -1) {
+    // int index = hash_key(field_name_buffer);
+    /* if (index == -1) {
       break;
-    }
-    // Add index to headers like before it is a hashmap
-    strcpy(headers[index].field_value, leading_whitespace(field_value_buffer));
+    } */
+    fill_headers(headers, field_name_buffer, field_value_buffer);
+
     memset(field_name_buffer, 0, sizeof(field_name_buffer));
     memset(field_value_buffer, 0, sizeof(field_value_buffer));
   }
 }
 
 void request_parser(const char *restrict req_get, Irequest_line *request_line,
-                    Istatus_line *status_line, field_values headers[]) {
+                    request_headers *headers) {
 
   int crlf = 0;
   char buffer[2048];
@@ -115,11 +139,6 @@ void request_parser(const char *restrict req_get, Irequest_line *request_line,
          req_get[word_count - 1] == '\r' && req_get[word_count] == '\n');
        word_count++) {
 
-    // int condition =
-    //     (req_get[word_count - 3] == '\r' && req_get[word_count - 2] == '\n'
-    //     &&
-    //      req_get[word_count - 1] == '\r' && req_get[word_count] == '\n');
-    //
     if (crlf == 0 &&
         (req_get[word_count] == '\r' && req_get[word_count + 1] == '\n')) {
       buffer[buffer_count] = '\0';

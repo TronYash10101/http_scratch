@@ -5,16 +5,21 @@
 
 #define MAX_FIELD_LINES 4
 
-/* typedef struct {
-  char Host[1024];
-  int Content_Length;
-  char Content_Type[1024];
+typedef struct {
+  char Host[256];
+  char Content_Length[32];
+  char Content_Type[128];
+  char User_Agent[512];
+  char Accept[512];
+  char Connection[32];
+  char Accept_Encoding[128];
+  char Accept_Language[128];
 } request_headers;
 
 typedef struct {
   int Content_Length;
   char Content_Type[1024];
-} response_headers; */
+} response_headers;
 
 typedef struct {
   char method[10];
@@ -25,7 +30,6 @@ typedef struct {
 typedef struct {
   char http_version[50];
   int status_code;
-  char reason_phrase[1024];
 } Istatus_line;
 
 typedef struct {

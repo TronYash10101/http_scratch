@@ -16,12 +16,13 @@ void response_line_parser(const char *restrict http_version, int status_code,
                           const char *restrict reason_pharse,
                           Istatus_line *status_line);
 
-int hash_key(char *field_name);
+void fill_headers(request_headers *headers, const char *field_name_buffer,
+                  const char *field_value_buffer);
 
 void request_headers_parser(const char *restrict header,
-                            field_values headers[]);
+                            request_headers *headers);
 
 void request_parser(const char *restrict req_get, Irequest_line *request_line,
-                    Istatus_line *status_line, field_values headers[]);
+                    request_headers *headers);
 
 #endif

@@ -1,4 +1,6 @@
 #include "headers/tcp_server.h"
+#include "headers/get_request.h"
+#include "headers/lower_string.h"
 #include "headers/message.h"
 #include "headers/parser.h"
 #include "headers/sys_includes.h"
@@ -12,6 +14,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
 #define MAX_CLIENTS 3
 
 struct addrinfo hints;
@@ -49,7 +52,7 @@ int main() {
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
 
-  if (getaddrinfo("127.0.0.1", "8000", &hints, &res) != 0) {
+  if (getaddrinfo("0.0.0.0", "8000", &hints, &res) != 0) {
     perror("getaddrinfo");
     return 1;
   }
@@ -86,6 +89,7 @@ int main() {
   fds[0].fd = socket_fd;
 
   int nfds = 1;
+  int bytes_send = 0;
   while (1) {
     int events = poll(fds, nfds, 2500);
 
@@ -123,18 +127,17 @@ int main() {
     // Check on existing sockets for action
     for (int i = 1; i < nfds; i++) {
 
-      field_values request_headers[MAX_FIELD_LINES];
+      request_headers request_header;
       Irequest_line request_line;
       Istatus_line status_line;
-
-      // If this socket has no incoming data, skip it entirely
-      if (!(fds[i].revents & POLLIN))
+      char response_buffer[1024];
+      if (!(fds[i].revents & POLLIN)) {
         continue;
+      }
 
       int n = recv(fds[i].fd, client_responses.responses[i].buffer,
                    sizeof(client_responses.responses[i].buffer) - 1, 0);
-
-      if (n < 0) {
+      if (n < 0 && bytes_send == 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           continue;
         } else {
@@ -151,32 +154,25 @@ int main() {
       }
 
       client_responses.responses[i].buffer[n] = '\0';
-
       request_parser(client_responses.responses[i].buffer, &request_line,
-                     &status_line, request_headers);
-
-      printf("%s\n", request_line.request_target);
-      printf("%s\n", request_line.method);
-      for (int x = 0; x < 3; x++) {
-        printf("%s\n", request_headers[x].field_value);
-      }
-      fds[i].revents = 0;
+                     &request_header);
+      get_request(response_buffer, &status_line, request_line.request_target);
+      bytes_send = send(fds[i].fd, response_buffer, strlen(response_buffer), 0);
+      printf("%d", bytes_send);
+      close(fds[i].fd);
+      fds[i] = fds[nfds - 1];
+      nfds--;
+      i--;
     }
 
-    /* int scan_fd = scanf("%c", &exit);
-    int flags = fcntl(scan_fd, F_GETFL, 0);
-    fcntl(scan_fd, F_SETFL, flags | O_NONBLOCK); */
-    if (exit == 'e') {
+    /* if (exit == 'e') {
       printf("\nServer Closed\n");
       return 0;
-    }
+    } */
   }
 
-  if (fds[0].events & POLL_HUP) {
+  if (fds[0].events & POLLHUP) {
     freeaddrinfo(res);
-    /* for (int i = nfds; i >= 0; i--) {
-      close(fds[i].fd);
-    } */
     close(socket_fd);
   }
 }
