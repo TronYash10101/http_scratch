@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #define MAX_CLIENTS 3
+#define RESPONSE_BUFFER_SIZE 2048
 
 struct addrinfo hints;
 struct addrinfo
@@ -134,7 +135,8 @@ int main() {
       request_headers request_header;
       Irequest_line request_line;
       Istatus_line status_line;
-      char response_buffer[1024];
+      char response_buffer[RESPONSE_BUFFER_SIZE];
+
       if (!(fds[i].revents & POLLIN)) {
         continue;
       }
@@ -161,7 +163,9 @@ int main() {
       request_parser(client_responses.responses[i].buffer, &request_line,
                      &request_header);
 
-      get_request(response_buffer, &status_line, request_line.request_target);
+      get_request(response_buffer, RESPONSE_BUFFER_SIZE, &status_line,
+                  request_line.request_target);
+
       printf("%s", response_buffer);
       bytes_send = send(fds[i].fd, response_buffer, strlen(response_buffer), 0);
       close(fds[i].fd);

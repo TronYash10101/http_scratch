@@ -14,9 +14,12 @@ void format_response(char *buffer, size_t buff_size, Istatus_line *status_line,
            "%s %d\r\nContent-Length: %d\r\nContent-Type: %s\r\n\r\n%s",
            status_line->http_version, status_line->status_code, content_len,
            content_type, response);
+
+  buffer[buff_size] = '\0';
 }
 
-void get_request(char *response_buffer, Istatus_line *status_line,
+void get_request(char *response_buffer, int response_buffer_size,
+                 Istatus_line *status_line,
                  const char *restrict request_target) {
 
   // eg: /home or eg: /home?param=1
@@ -29,14 +32,14 @@ void get_request(char *response_buffer, Istatus_line *status_line,
 
   if (!request_target) {
     status_line->status_code = 400;
-    format_response(response_buffer, sizeof(response_buffer), status_line,
+    format_response(response_buffer, response_buffer_size, status_line,
                     "Invalid Request", "text");
     return;
   }
 
   if (request_target[0] != '/') {
     status_line->status_code = 400;
-    format_response(response_buffer, sizeof(response_buffer), status_line,
+    format_response(response_buffer, response_buffer_size, status_line,
                     "Malformed Request", "text");
     return;
   }
@@ -61,13 +64,13 @@ void get_request(char *response_buffer, Istatus_line *status_line,
     if (strcmp(target_buffer, routes[i].name) == 0) {
       status_line->status_code = 200;
       const char *route_response = routes[i].response;
-      format_response(response_buffer, sizeof(response_buffer), status_line,
+      format_response(response_buffer, response_buffer_size, status_line,
                       route_response, "text");
       return;
     }
   }
   status_line->status_code = 404;
-  format_response(response_buffer, sizeof(response_buffer), status_line,
+  format_response(response_buffer, response_buffer_size, status_line,
                   "Resource Not Found", "text");
   return;
 }

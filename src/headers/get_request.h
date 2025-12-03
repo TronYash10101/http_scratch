@@ -14,6 +14,7 @@ typedef struct {
 extern route routes[];
 void format_response(char *buffer, size_t buff_size, Istatus_line *status_line,
                      const char *response, const char *content_type);
-void get_request(char *response_buffer, Istatus_line *status_line,
+void get_request(char *response_buffer, int response_buffer_size,
+                 Istatus_line *status_line,
                  const char *restrict request_target);
 #endif

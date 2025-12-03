@@ -24,11 +24,11 @@ typedef struct {
 typedef struct {
   char method[10];
   char request_target[1024];
-  char http_version[50];
+  char http_version[500];
 } Irequest_line;
 
 typedef struct {
-  char http_version[50];
+  char http_version[500];
   int status_code;
 } Istatus_line;
 
