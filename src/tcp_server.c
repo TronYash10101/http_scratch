@@ -94,7 +94,6 @@ int main() {
   fds[0].fd = socket_fd;
 
   int nfds = 1;
-  int bytes_send = 0;
   while (1) {
     int events = poll(fds, nfds, 2500);
 
@@ -143,7 +142,7 @@ int main() {
 
       int n = recv(fds[i].fd, client_responses.responses[i].buffer,
                    sizeof(client_responses.responses[i].buffer) - 1, 0);
-      if (n < 0 && bytes_send == 0) {
+      if (n < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           continue;
         } else {
@@ -167,7 +166,15 @@ int main() {
                   request_line.request_target);
 
       printf("%s", response_buffer);
-      bytes_send = send(fds[i].fd, response_buffer, strlen(response_buffer), 0);
+
+      int total_bytes_send = 0;
+
+      // while (total_bytes_send <= RESPONSE_BUFFER_SIZE) {
+      int bytes_send =
+          send(fds[i].fd, response_buffer, strlen(response_buffer), 0);
+      //   total_bytes_send += bytes_send;
+      // }
+
       close(fds[i].fd);
       fds[i] = fds[nfds - 1];
       nfds--;
