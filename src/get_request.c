@@ -4,13 +4,12 @@
 #include <string.h>
 #include <unistd.h>
 
-route routes[] = {{"/", "Default Page"},
-                  {"/home", "Home Page"},
-                  {"/about", "About Page"},
-                  {"/contact", "Contact Page"}};
-
-char file_path[] =
+char home_path[] =
     "/home/yash-jadhav/http_scratch/src/static_folder/index.html";
+char about_path[] =
+    "/home/yash-jadhav/http_scratch/src/static_folder/about.html";
+
+route routes[] = {{"/", home_path}, {"/about", about_path}};
 
 void format_response(char *buffer, size_t buff_size, Istatus_line *status_line,
                      const char *response, const char *content_type) {
@@ -25,7 +24,7 @@ void format_response(char *buffer, size_t buff_size, Istatus_line *status_line,
   buffer[buff_size] = '\0';
 }
 
-void serve_static_files(char *file_path, char *response_buffer,
+void serve_static_files(const char *file_path, char *response_buffer,
                         int response_buffer_size, Istatus_line *status_line,
                         const char *content_type) {
 
@@ -76,14 +75,14 @@ void get_request(char *response_buffer, int response_buffer_size,
 
   if (!request_target) {
     status_line->status_code = 400;
-    serve_static_files(file_path, response_buffer, response_buffer_size,
+    serve_static_files(home_path, response_buffer, response_buffer_size,
                        status_line, "text");
     return;
   }
 
   if (request_target[0] != '/') {
     status_line->status_code = 400;
-    serve_static_files(file_path, response_buffer, response_buffer_size,
+    serve_static_files(home_path, response_buffer, response_buffer_size,
                        status_line, "text");
     return;
   }
@@ -108,13 +107,13 @@ void get_request(char *response_buffer, int response_buffer_size,
     if (strcmp(target_buffer, routes[i].name) == 0) {
       status_line->status_code = 200;
       // const char *route_response = routes[i].response;
-      serve_static_files(file_path, response_buffer, response_buffer_size,
-                         status_line, "text");
+      serve_static_files(routes[i].response, response_buffer,
+                         response_buffer_size, status_line, "text");
       return;
     }
   }
   status_line->status_code = 404;
-  serve_static_files(file_path, response_buffer, response_buffer_size,
+  serve_static_files(home_path, response_buffer, response_buffer_size,
                      status_line, "text");
   return;
 }
