@@ -12,18 +12,6 @@ void request_line_parser(const char *restrict request_line_ptr,
   return;
 }
 
-void response_line_parser(const char *restrict http_version, int status_code,
-                          const char *restrict reason_pharse,
-                          Istatus_line *status_line) {
-  if (strlen(http_version) > 50 || strlen(reason_pharse) > 1024) {
-    perror("Size mismatch");
-  }
-  memcpy(status_line->http_version, http_version, strlen(http_version));
-  status_line->status_code = status_code;
-  return;
-}
-
-// Change this to Hash Table
 void fill_headers(request_headers *headers, const char *field_name_buffer,
                   const char *field_value_buffer) {
   if (strcasecmp(field_name_buffer, "Host") == 0) {
@@ -63,11 +51,10 @@ void fill_headers(request_headers *headers, const char *field_name_buffer,
   else if (strcasecmp(field_name_buffer, "Accept-Language") == 0) {
     snprintf(headers->Accept_Language, sizeof(headers->Accept_Language), "%s",
              field_value_buffer);
-  }
-
-  else {
+  } else {
   }
 }
+
 void request_headers_parser(const char *restrict header,
                             request_headers *headers) {
 

@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Server Test Page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f4f4f4;
+    }
+
+    header {
+      background: #222;
+      color: #fff;
+      padding: 15px;
+      border-radius: 6px;
+    }
+
+    section {
+      background: #fff;
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: left;
+    }
+
+    button {
+      padding: 8px 12px;
+      border: none;
+      background: #4caf50;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    input {
+      padding: 6px;
+      margin-right: 5px;
+    }
+
+    .log {
+      margin-top: 10px;
+      background: #111;
+      color: #0f0;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      height: 120px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Server Test Page</h1>
+  <p>If this loads fast and correctly, your server is working.</p>
+</header>
+
+<section>
+  <h2>Test Form</h2>
+  <input type="text" id="name" placeholder="Enter name">
+  <button onclick="submitTest()">Submit</button>
+</section>
+
+<section>
+  <h2>Test Table</h2>
+  <table>
+    <tr><th>ID</th><th>Name</th><th>Status</th></tr>
+    <tr><td>1</td><td>Alpha</td><td>OK</td></tr>
+    <tr><td>2</td><td>Beta</td><td>OK</td></tr>
+    <tr><td>3</td><td>Gamma</td><td>OK</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>JavaScript Log</h2>
+  <div class="log" id="log"></div>
+</section>
+
+<script>
+  async function submitTest() {
+  const postData = "?name=Yash&age=5"
+  const requestOptions = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: postData
+    };
+    const name = document.getElementById("name").value || "Anonymous";
+    const log = document.getElementById("log");
+    const time = new Date().toLocaleTimeString();
+    const server_response_json = await fetch("localhost:8000/post_server",requestOptions);
+    const server_response = server_response_json.parse();
+    log.innerHTML += `[${time}] Submitted: ${server_response}<br>`;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // Auto ping every 2 seconds
+  setInterval(() => {
+    const log = document.getElementById("log");
+    const time = new Date().toLocaleTimeString();
+    log.innerHTML += `[${time}] Ping OK<br>`;
+    log.scrollTop = log.scrollHeight;
+  }, 2000);
+</script>
+
+</body>
+</html>

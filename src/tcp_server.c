@@ -132,9 +132,12 @@ int main() {
     for (int i = 1; i < nfds; i++) {
 
       request_headers request_header;
+      response_headers response_header;
       Irequest_line request_line;
       Istatus_line status_line;
       char response_buffer[RESPONSE_BUFFER_SIZE];
+      char response_header_buffer[RESPONSE_BUFFER_SIZE];
+      char file_path[RESPONSE_BUFFER_SIZE];
 
       if (!(fds[i].revents & POLLIN)) {
         continue;
@@ -157,23 +160,55 @@ int main() {
         close(fds[i].fd);
         continue;
       }
-
       client_responses.responses[i].buffer[n] = '\0';
       request_parser(client_responses.responses[i].buffer, &request_line,
                      &request_header);
 
-      get_request(response_buffer, RESPONSE_BUFFER_SIZE, &status_line,
-                  request_line.request_target);
-
-      printf("%s", response_buffer);
+      get_request(file_path, response_header_buffer, RESPONSE_BUFFER_SIZE,
+                  &status_line, request_line.request_target, &response_header);
 
       int total_bytes_send = 0;
+      int bytes_read = 0;
+      int header_length = strlen(response_header_buffer);
+      int header_send = 0;
 
-      // while (total_bytes_send <= RESPONSE_BUFFER_SIZE) {
-      int bytes_send =
-          send(fds[i].fd, response_buffer, strlen(response_buffer), 0);
-      //   total_bytes_send += bytes_send;
-      // }
+      int file_socket = open(file_path, O_RDONLY);
+
+      if (file_socket == -1) {
+        status_line.status_code = 500;
+        printf("Could not open file");
+        return -1;
+      }
+
+      while (header_send < header_length) {
+        int header_bytes_send =
+            send(fds[i].fd,
+                 response_header_buffer +
+                     header_send, // moves pointer of first element in response
+                                  // header buff to point to first element of
+                                  // remaining elements
+                 header_length - header_send, 0);
+        if (header_bytes_send < 0) {
+          break;
+        }
+        header_send += header_bytes_send;
+      }
+
+      while ((bytes_read = read(file_socket, response_buffer,
+                                sizeof(response_buffer))) > 0) {
+
+        int bytes_send = 0;
+        while (bytes_send < bytes_read) {
+          int n = send(fds[i].fd, response_buffer + bytes_send,
+                       bytes_read - bytes_send, 0);
+
+          if (n <= 0) {
+            close(file_socket);
+            return -1;
+          }
+          bytes_send += n;
+        }
+      }
 
       close(fds[i].fd);
       fds[i] = fds[nfds - 1];
