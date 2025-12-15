@@ -115,12 +115,15 @@ void request_headers_parser(const char *restrict header,
 }
 
 void request_parser(const char *restrict req_get, Irequest_line *request_line,
-                    request_headers *headers) {
+                    request_headers *headers, char body[2048]) {
 
   int crlf = 0;
-  char buffer[2048];
+  char headers_buffer[2048];
+  char body_buffer[2048];
   int buffer_count = 0;
+  int body_word_count = 0;
   int word_count = 0;
+
   for (word_count = 0;
        !(req_get[word_count - 3] == '\r' && req_get[word_count - 2] == '\n' &&
          req_get[word_count - 1] == '\r' && req_get[word_count] == '\n');
@@ -128,18 +131,29 @@ void request_parser(const char *restrict req_get, Irequest_line *request_line,
 
     if (crlf == 0 &&
         (req_get[word_count] == '\r' && req_get[word_count + 1] == '\n')) {
-      buffer[buffer_count] = '\0';
-      request_line_parser(buffer, request_line);
+      headers_buffer[buffer_count] = '\0';
+      request_line_parser(headers_buffer, request_line);
       buffer_count = 0;
-      memset(buffer, 0, sizeof(buffer));
+      memset(headers_buffer, 0, sizeof(headers_buffer));
       crlf++;
       word_count++;
       continue;
     }
 
-    buffer[buffer_count] = req_get[word_count];
+    headers_buffer[buffer_count] = req_get[word_count];
     buffer_count++;
   }
-  buffer[buffer_count] = '\n';
-  request_headers_parser(buffer, headers);
+  headers_buffer[buffer_count] = '\n';
+  headers_buffer[buffer_count + 1] = '\0';
+  request_headers_parser(headers_buffer, headers);
+
+  if (headers->Content_Length > 0) {
+    word_count++;
+    for (body_word_count = 0; req_get[word_count] != '\0'; body_word_count++) {
+      body_buffer[body_word_count] = req_get[word_count];
+      word_count++;
+    }
+    body_buffer[body_word_count] = '\0';
+    stpncpy(body, body_buffer, strlen(body_buffer));
+  }
 }

@@ -44,6 +44,6 @@ void request_headers_parser(const char *restrict header,
 
  **/
 void request_parser(const char *restrict req_get, Irequest_line *request_line,
-                    request_headers *headers);
+                    request_headers *headers, char body[2048]);
 
 #endif

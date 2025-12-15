@@ -7,7 +7,10 @@ SRC = \
     src/tcp_server.c \
     src/parser.c \
     src/get_request.c \
+    src/errors.c \
+    src/router.c \
     src/response.c \
+    src/post_request.c \
     src/utils/leading_whitespace.c \
     src/utils/lower_string.c
 
