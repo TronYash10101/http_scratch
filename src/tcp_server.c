@@ -3,7 +3,7 @@
 #include "headers/lower_string.h"
 #include "headers/message.h"
 #include "headers/parser.h"
-#include "headers/post_request.h"
+#include "headers/put_request.h"
 #include "headers/sys_includes.h"
 #include <arpa/inet.h>
 #include <errno.h>
@@ -168,12 +168,12 @@ int main() {
 
       if (strcmp("GET", request_line.method) == 0) {
         get_request(&request_line, &request_header, file_path,
-                    response_header_buffer, RESPONSE_BUFFER_SIZE, &status_line,
-                    &response_header);
-      } else if (strcmp("POST", request_line.method) == 0) {
-        post_request(&request_line, &request_header, file_path,
-                     response_header_buffer, RESPONSE_BUFFER_SIZE, &status_line,
-                     &response_header, body);
+                    response_header_buffer, RESPONSE_BUFFER_SIZE,
+                    RESPONSE_BUFFER_SIZE, &status_line, &response_header);
+      } else if (strcmp("PUT", request_line.method) == 0) {
+        put_request(&request_line, &request_header, file_path,
+                    response_header_buffer, RESPONSE_BUFFER_SIZE,
+                    RESPONSE_BUFFER_SIZE, &status_line, &response_header, body);
       }
 
       int total_bytes_send = 0;
@@ -183,7 +183,10 @@ int main() {
       /* printf("file_path : %s\n", file_path);
       printf("reponse_header : %s\n", response_header_buffer); */
       int file_socket = open(file_path, O_RDONLY);
-      printf("%s", file_path);
+
+      printf("\n%s\n", file_path);
+      printf("\n%s\n", response_header_buffer);
+
       if (file_socket == -1) {
         status_line.status_code = 500;
         printf("Could not open file");

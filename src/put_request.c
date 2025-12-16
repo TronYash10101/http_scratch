@@ -1,19 +1,13 @@
-#include "headers/post_request.h"
-#include "headers/errors.h"
-#include "headers/response.h"
-#include "headers/router.h"
-#include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+#include "headers/put_request.h"
 
 // Create new file_path_buffer and serve it
 
-void post_request(const Irequest_line *restrict request_line,
-                  const request_headers *restrict request_headers,
-                  char *file_path_buffer, char *response_header_buffer,
-                  int response_header_buffer_size, Istatus_line *status_line,
-                  response_headers *reponse_header, const char *body) {
+void put_request(const Irequest_line *restrict request_line,
+                 const request_headers *restrict request_headers,
+                 char *file_path_buffer, char *response_header_buffer,
+                 int response_header_buffer_size, int file_path_buffer_size,
+                 Istatus_line *status_line, response_headers *response_header,
+                 const char *body) {
 
   int req_target_word_count = 0;
   int buffer_word_count = 0;
@@ -39,20 +33,8 @@ void post_request(const Irequest_line *restrict request_line,
       "  <p>User Added Resource</p>\n"
       "  <p>%s</p>\n"
       "\n"
-      "  <button onclick=\"sendPost()\">Send POST</button>\n"
+      "  <button onclick=\"sendPost()\">Send PUT</button>\n"
       "\n"
-      "<script>\n"
-      "  async function sendPost() {\n"
-      "    const res = await fetch('/add_resource', {\n"
-      "      method: 'POST',\n"
-      "      headers: { 'Content-Type': 'text/plain' },\n"
-      "      body: 'me'\n"
-      "    });\n"
-      "\n"
-      "    const txt = await res.text();\n"
-      "    console.log(txt);\n"
-      "  }\n"
-      "</script>\n"
       "</body>\n"
       "</html>\n";
 
@@ -60,7 +42,7 @@ void post_request(const Irequest_line *restrict request_line,
     status_line->status_code = 400;
     error_page_path(status_line->status_code, file_path_buffer);
     respond(file_path_buffer, response_header_buffer,
-            response_header_buffer_size, status_line, reponse_header);
+            response_header_buffer_size, status_line, response_header);
     printf("Request header error");
     return;
   }
@@ -70,8 +52,8 @@ void post_request(const Irequest_line *restrict request_line,
     status_line->status_code = 411;
     error_page_path(status_line->status_code, file_path_buffer);
     respond(file_path_buffer, response_header_buffer,
-            response_header_buffer_size, status_line, reponse_header);
-    printf("No content found for POST");
+            response_header_buffer_size, status_line, response_header);
+    printf("No content found for PUT");
     return;
   }
 
@@ -88,7 +70,8 @@ void post_request(const Irequest_line *restrict request_line,
 
   // Check if file exists & method is correct
   int route_status =
-      router(target_buffer, request_line->method, file_path_buffer);
+      router(target_buffer, request_line->method, file_path_buffer,
+             file_path_buffer_size, response_header);
 
   if (route_status != -1) {
     status_line->status_code = 200;
@@ -100,17 +83,18 @@ void post_request(const Irequest_line *restrict request_line,
       status_line->status_code = 500;
       error_page_path(status_line->status_code, file_path_buffer);
       respond(file_path_buffer, response_header_buffer,
-              response_header_buffer_size, status_line, reponse_header);
-      printf("POST Socket Error");
+              response_header_buffer_size, status_line, response_header);
+      printf("PUT Socket Error");
       return;
     }
 
     int len = snprintf(to_write, sizeof(to_write), html_template, body);
     if (len < 0 || len >= sizeof(to_write)) {
       status_line->status_code = 413;
+      error_page_path(status_line->status_code, file_path_buffer);
       respond(file_path_buffer, response_header_buffer,
-              response_header_buffer_size, status_line, reponse_header);
-      printf("POST Content To Send Too Large");
+              response_header_buffer_size, status_line, response_header);
+      printf("PUT Content To Send Too Large");
       return;
     }
 
@@ -123,7 +107,7 @@ void post_request(const Irequest_line *restrict request_line,
       if (n <= 0) {
         close(new_resource_fd);
         status_line->status_code = 500;
-        printf("POST Internal Server Error");
+        printf("PUT Internal Server Error");
         return;
       }
       bytes_written += n;
@@ -133,16 +117,16 @@ void post_request(const Irequest_line *restrict request_line,
       close(new_resource_fd);
 
       respond(file_path_buffer, response_header_buffer,
-              response_header_buffer_size, status_line, reponse_header);
-      printf("POST Success");
+              response_header_buffer_size, status_line, response_header);
+      printf("PUT Success");
       return;
     }
   } else {
     status_line->status_code = 404;
     error_page_path(status_line->status_code, file_path_buffer);
     respond(file_path_buffer, response_header_buffer,
-            response_header_buffer_size, status_line, reponse_header);
-    printf("POST Not Found");
+            response_header_buffer_size, status_line, response_header);
+    printf("PUT Not Found");
     return;
   }
 }

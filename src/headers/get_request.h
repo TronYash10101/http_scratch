@@ -24,7 +24,7 @@
 void get_request(const Irequest_line *restrict request_line,
                  const request_headers *restrict request_headers,
                  char *file_path_buffer, char *response_header_buffer,
-                 int response_buffer_size, Istatus_line *status_line,
-                 response_headers *reponse_header);
+                 int response_buffer_size, int file_path_buffer_size,
+                 Istatus_line *status_line, response_headers *reponse_header);
 
 #endif

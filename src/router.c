@@ -1,6 +1,4 @@
 #include "headers/router.h"
-#include <string.h>
-#include <strings.h>
 
 const char home_path[] =
     "/home/yash-jadhav/http_scratch/src/static_folder/index.html";
@@ -27,19 +25,44 @@ char no_body_found_path[] =
 route routes[] = {{"GET", "/", home_path},
                   {"GET", "/about", about_path},
                   {"GET", "/big", big_path},
-                  {"POST", "/add_resource", new_resource_file_path}};
+                  {"GET", "/new_resource", new_resource_file_path},
+                  {"PUT", "/add_resource", new_resource_file_path}};
 
 int router(const char *target_resource, const char *method,
-           char *file_path_buffer) {
+           char *file_path_buffer, int file_path_buffer_size,
+           response_headers *headers) {
 
+  char extra_resource_path[2048] =
+      "/home/yash-jadhav/http_scratch/src/static_folder";
   const int MAX_ENDPOINTS = sizeof(routes) / sizeof(routes[0]);
 
   for (int i = 0; i < MAX_ENDPOINTS; i++) {
     if (strcmp(routes[i].name, target_resource) == 0 &&
         strncasecmp(method, routes[i].method, strlen(routes[i].method)) == 0) {
-      snprintf(file_path_buffer, strlen(routes[i].file_path) + 1, "%s",
+      strncpy(headers->Content_Type, "text/html",
+              sizeof(headers->Content_Type));
+      snprintf(file_path_buffer, file_path_buffer_size, "%s",
                routes[i].file_path);
       return 0;
+    } else {
+      struct stat st;
+
+      strcat(extra_resource_path, target_resource);
+      strncpy(headers->Content_Type, "text/css", sizeof(headers->Content_Type));
+
+      if (strlen(extra_resource_path) > 2048) {
+        printf("403 Forbidden");
+        return -1;
+      }
+      printf("extra_resource target: %s\n", extra_resource_path);
+
+      if (stat(extra_resource_path, &st) == 0) {
+        snprintf(file_path_buffer, file_path_buffer_size, "%s",
+                 extra_resource_path);
+        return 0;
+      } else if (stat(extra_resource_path, &st) < 0) {
+        return -1;
+      }
     }
   }
   return -1;

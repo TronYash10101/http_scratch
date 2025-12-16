@@ -8,21 +8,9 @@
 </head>
 <body>
   <p>User Added Resource</p>
-  <p>me</p>
+  <p>hello</p>
 
-  <button onclick="sendPost()">Send POST</button>
+  <button onclick="sendPost()">Send PUT</button>
 
-<script>
-  async function sendPost() {
-    const res = await fetch('/add_resource', {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: 'me'
-    });
-
-    const txt = await res.text();
-    console.log(txt);
-  }
-</script>
 </body>
 </html>
