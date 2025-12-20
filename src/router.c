@@ -1,4 +1,6 @@
 #include "headers/router.h"
+#include <stdio.h>
+#include <string.h>
 
 const char home_path[] =
     "/home/yash-jadhav/http_scratch/src/static_folder/index.html";
@@ -48,15 +50,20 @@ int router(const char *target_resource, const char *method,
       struct stat st;
 
       strcat(extra_resource_path, target_resource);
-      strncpy(headers->Content_Type, "text/css", sizeof(headers->Content_Type));
 
       if (strlen(extra_resource_path) > 2048) {
         printf("403 Forbidden");
         return -1;
       }
+
       printf("extra_resource target: %s\n", extra_resource_path);
 
       if (stat(extra_resource_path, &st) == 0) {
+        char *file_ext = strrchr(target_resource, '.');
+        char content_type[32];
+        snprintf(content_type, sizeof(content_type), "text/%s", file_ext + 1);
+        strncpy(headers->Content_Type, content_type,
+                sizeof(headers->Content_Type));
         snprintf(file_path_buffer, file_path_buffer_size, "%s",
                  extra_resource_path);
         return 0;

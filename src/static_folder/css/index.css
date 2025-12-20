@@ -1,8 +1,25 @@
 body {
+
   background-color: red; /* Sets a light gray background color */
   color: #333; /* Sets the default text color */
   font-family: Arial, sans-serif; /* Sets the default font for the entire page */
   margin: 0; /* Removes default browser margins for the body */
   padding: 0; /* Removes default browser padding */
   line-height: 1.6; /* Sets the line height for better readability */
+}
+
+#img_container{
+ 	display : flex;
+	height : 50vh;
+	width : 50vh;
+	flex-direction : row;
+	border : 2px solid white;
+}
+
+.cards{
+	margin : 1em 1em;
+	position : relative;
+	border : 1px solid black;
+	height : 2em;
+	width : 2em;
 }
