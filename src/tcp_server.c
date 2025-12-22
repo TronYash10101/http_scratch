@@ -1,41 +1,14 @@
 #include "headers/tcp_server.h"
-#include "headers/get_request.h"
-#include "headers/lower_string.h"
-#include "headers/message.h"
 #include "headers/parser.h"
-#include "headers/put_request.h"
-#include "headers/sys_includes.h"
-#include <arpa/inet.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <poll.h>
-#include <signal.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/socket.h>
+#include <strings.h>
+#include <time.h>
 #include <unistd.h>
 
-#define MAX_CLIENTS 3
-#define RESPONSE_BUFFER_SIZE 2048
-
-struct addrinfo hints;
-struct addrinfo
-    *res; // res contains the final linked list walk to find the correct value
-int socket_fd;
-struct sockaddr_storage incoming_req;
-struct addrinfo *success_addr;
-struct sockaddr *s;
-// struct pollfd connection_socket[0];
+// Array storing pollfd structs
 struct pollfd fds[MAX_CLIENTS];
-
-typedef struct {
-  char buffer[1024];
-} response;
-
-typedef struct {
-  response responses[MAX_CLIENTS];
-} client_responses;
+struct alive_struct alive_connections[MAX_CLIENTS];
 
 void non_block(int socket_fd) {
   int flags = fcntl(socket_fd, F_GETFL, 0);
@@ -46,8 +19,8 @@ int main() {
 
   char ip4_buff[INET_ADDRSTRLEN];
   char peer_buff[INET_ADDRSTRLEN];
-  char exit = '\0';
-  client_responses client_responses;
+  // char exit = '\0';
+  // client_responses client_responses;
   int opt = 1;
 
   memset(&hints, 0, sizeof(hints));
@@ -81,8 +54,7 @@ int main() {
 
     inet_ntop(AF_INET, &addr->sin_addr, ip4_buff, INET_ADDRSTRLEN);
 
-    printf("\nbind succesful at IP %s\n", ip4_buff);
-    // printf("socket descriptor %d\n", socket_fd);
+    LOG_INFO("\nbind succesful at IP %s\n", ip4_buff);
   }
 
   if (listen(socket_fd, 10) == -1) {
@@ -98,8 +70,7 @@ int main() {
   while (1) {
     int events = poll(fds, nfds, 2500);
 
-    // New socket descriptor to actually communicate, old one still used for
-    // listening
+    // Check for new clients
     if (fds[0].revents & POLLIN) {
       unsigned int incoming_req_size = sizeof(incoming_req);
       int new_socketfd;
@@ -111,26 +82,42 @@ int main() {
 
       non_block(new_socketfd);
 
-      // Check for new clients
       if (incoming_req.ss_family == AF_INET) {
         struct sockaddr peer;
         unsigned int len = sizeof(struct sockaddr);
         struct sockaddr_in *peer_addr = (struct sockaddr_in *)&incoming_req;
         getpeername(new_socketfd, &peer, &len);
-        printf("\npeer info: %s\n",
-               inet_ntop(res->ai_family, &peer_addr->sin_addr, peer_buff,
-                         sizeof(struct sockaddr)));
 
         if (nfds < MAX_CLIENTS) {
           fds[nfds].fd = new_socketfd;
           fds[nfds].events = POLLIN;
+          alive_connections[nfds].last_active = time(NULL);
+          alive_connections[nfds].handled_requests = 0;
+          alive_connections[nfds].keep_alive = true;
           nfds += 1;
+          LOG_INFO("ACCEPT fd=%d ip=%s", new_socketfd,
+                   inet_ntop(res->ai_family, &peer_addr->sin_addr, peer_buff,
+                             sizeof(peer_buff)));
         }
       }
     }
 
     // Check on existing sockets for action
     for (int i = 1; i < nfds; i++) {
+      time_t start_time = time(NULL);
+
+      if (!(fds[i].revents & POLLIN)) {
+        if (start_time - alive_connections[i].last_active > 10) {
+          LOG_WARN("TIMEOUT fd=%d last_active=%ld now=%ld", fds[i].fd,
+                   alive_connections[i].last_active, start_time);
+          close(fds[i].fd);
+          fds[i] = fds[nfds - 1];
+          alive_connections[i] = alive_connections[nfds - 1];
+          nfds--;
+          i--;
+        }
+        continue;
+      }
 
       request_headers request_header;
       response_headers response_header;
@@ -141,14 +128,27 @@ int main() {
       char file_path[RESPONSE_BUFFER_SIZE];
       char body[RESPONSE_BUFFER_SIZE];
 
-      if (!(fds[i].revents & POLLIN)) {
-        continue;
-      }
+      memset(&request_line, 0, sizeof(request_line));
+      memset(&request_header, 0, sizeof(request_header));
+      memset(file_path, 0, sizeof(file_path));
+      memset(body, 0, sizeof(body));
+      memset(body, 0, sizeof(body));
+      // memset(client_responses.responses[i].buffer, 0,
+      //        sizeof(client_responses.responses[i].buffer));
 
-      int n = recv(fds[i].fd, client_responses.responses[i].buffer,
-                   sizeof(client_responses.responses[i].buffer) - 1, 0);
+      alive_connections[i].per_connection_buffer_len = 0;
+      int n = recv(fds[i].fd,
+                   &alive_connections[i].per_connection_buffer +
+                       alive_connections[i].per_connection_buffer_len,
+                   sizeof(alive_connections[i].per_connection_buffer) - 1, 0);
+      alive_connections[i].per_connection_buffer_len += n;
+
+      // printf("%s", client_responses.responses[i].buffer);
+      // Look out for this
+      alive_connections[i].last_active = time(NULL);
       if (n < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          LOG_ERROR("RECV fd=%d errno=%d", fds[i].fd, errno);
           continue;
         } else {
           perror("recv");
@@ -158,79 +158,105 @@ int main() {
       }
 
       if (n == 0) {
-        printf("Client disconnected\n");
+        LOG_INFO("CLIENT CLOSED fd=%d", fds[i].fd);
         close(fds[i].fd);
         continue;
       }
-      client_responses.responses[i].buffer[n] = '\0';
-      request_parser(client_responses.responses[i].buffer, &request_line,
-                     &request_header, body);
 
-      if (strcmp("GET", request_line.method) == 0) {
-        get_request(&request_line, &request_header, file_path,
-                    response_header_buffer, RESPONSE_BUFFER_SIZE,
-                    RESPONSE_BUFFER_SIZE, &status_line, &response_header);
-      } else if (strcmp("PUT", request_line.method) == 0) {
-        put_request(&request_line, &request_header, file_path,
-                    response_header_buffer, RESPONSE_BUFFER_SIZE,
-                    RESPONSE_BUFFER_SIZE, &status_line, &response_header, body);
-      }
+      alive_connections[i].per_connection_buffer
+          [alive_connections[i].per_connection_buffer_len] = '\0';
 
-      int total_bytes_send = 0;
-      int bytes_read = 0;
-      int header_length = strlen(response_header_buffer);
-      int header_send = 0;
-      /* printf("file_path : %s\n", file_path);
-      printf("reponse_header : %s\n", response_header_buffer); */
-      int file_socket = open(file_path, O_RDONLY);
+      int one_request_len = 0;
 
-      printf("\n%s\n", file_path);
-      printf("\n%s\n", response_header_buffer);
+      if (is_complete_request(alive_connections[i].per_connection_buffer,
+                              &one_request_len) == 0) {
+        request_parser(alive_connections[i].per_connection_buffer,
+                       &request_line, &request_header, body);
 
-      if (file_socket == -1) {
-        status_line.status_code = 500;
-        printf("Could not open file");
-        return -1;
-      }
-      while (header_send < header_length) {
-        int header_bytes_send =
-            send(fds[i].fd,
-                 response_header_buffer +
-                     header_send, // moves pointer of first element in response
-                                  // header buff to point to first element of
-                                  // remaining elements
-                 header_length - header_send, 0);
-        if (header_bytes_send < 0) {
-          break;
+        LOG_INFO("REQUEST fd=%d %s %s %s", fds[i].fd, request_line.method,
+                 request_line.request_target, request_line.http_version);
+
+        if (strcmp("GET", request_line.method) == 0) {
+          get_request(&request_line, &request_header, file_path,
+                      response_header_buffer, RESPONSE_BUFFER_SIZE,
+                      RESPONSE_BUFFER_SIZE, &status_line, &response_header);
+        } else if (strcmp("PUT", request_line.method) == 0) {
+          put_request(&request_line, &request_header, file_path,
+                      response_header_buffer, RESPONSE_BUFFER_SIZE,
+                      RESPONSE_BUFFER_SIZE, &status_line, &response_header,
+                      body);
         }
-        header_send += header_bytes_send;
-      }
+        int total_bytes_send = 0;
+        int bytes_read = 0;
+        int header_length = strlen(response_header_buffer);
+        int header_send = 0;
+        int file_socket = open(file_path, O_RDONLY);
 
-      while ((bytes_read = read(file_socket, response_buffer,
-                                sizeof(response_buffer))) > 0) {
-
-        int bytes_send = 0;
-        while (bytes_send < bytes_read) {
-          int n = send(fds[i].fd, response_buffer + bytes_send,
-                       bytes_read - bytes_send, 0);
-
-          if (n <= 0) {
-            close(file_socket);
-            return -1;
+        if (file_socket == -1) {
+          status_line.status_code = 500;
+          LOG_ERROR("Could not open file");
+          return -1;
+        }
+        while (header_send < header_length) {
+          int header_bytes_send =
+              send(fds[i].fd,
+                   response_header_buffer +
+                       header_send, // moves pointer of first element in
+                                    // response header buff to point to first
+                                    // element of remaining elements
+                   header_length - header_send, 0);
+          LOG_DEBUG("RESPONSE fd=%d status=%d content_len=%d", fds[i].fd,
+                    status_line.status_code, header_length);
+          if (header_bytes_send < 0) {
+            break;
           }
-          bytes_send += n;
+          header_send += header_bytes_send;
         }
-      }
+        while ((bytes_read = read(file_socket, response_buffer,
+                                  sizeof(response_buffer))) > 0) {
+          int bytes_send = 0;
+          while (bytes_send < bytes_read) {
+            int n = send(fds[i].fd, response_buffer + bytes_send,
+                         bytes_read - bytes_send, 0);
 
-      close(fds[i].fd);
-      fds[i] = fds[nfds - 1];
-      nfds--;
+            if (n <= 0) {
+              close(file_socket);
+              return -1;
+            }
+            bytes_send += n;
+          }
+        }
+        if (strncasecmp(request_header.Connection, "Close", strlen("Close")) ==
+            0) {
+          alive_connections[i].keep_alive = false;
+          LOG_DEBUG("KEEP-ALIVE fd=%d disabled", fds[i].fd);
+        }
+        if (!(alive_connections[i].keep_alive) ||
+            alive_connections[i].handled_requests > 10) {
+          close(fds[i].fd);
+          fds[i] = fds[nfds - 1];
+          alive_connections[i] = alive_connections[nfds - 1];
+          nfds--;
+          i--;
+          LOG_INFO("CLOSE fd=%d reason=%s handled=%d", fds[i].fd,
+                   alive_connections[i].handled_requests > 3
+                       ? "max_requests"
+                       : "connection_close",
+                   alive_connections[i].handled_requests);
+
+        } else {
+          fds[i].events = POLLIN;
+          alive_connections[i].handled_requests += 1;
+        }
+        printf("\n");
+        LOG_INFO("Buffer State:\n%s",
+                 alive_connections[i].per_connection_buffer);
+        memmove(&alive_connections[i].per_connection_buffer,
+                &alive_connections[i].per_connection_buffer + one_request_len,
+                alive_connections[i].per_connection_buffer_len -
+                    one_request_len);
+      };
     }
-
-    /* if (exit == 'e') {
-      printf("\nServer Closed\n");
-      return 0;
-    } */
   }
 
   if (fds[0].events & POLLHUP) {

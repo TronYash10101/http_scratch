@@ -1,7 +1,30 @@
 #include "sys_includes.h"
+#include <stdbool.h>
+#include <time.h>
 
 #ifndef MESSAGE
 #define MESSAGE
+
+#define CLR_RESET "\033[0m"
+#define CLR_RED "\033[31m"
+#define CLR_GREEN "\033[32m"
+#define CLR_YELLOW "\033[33m"
+#define CLR_BLUE "\033[34m"
+#define CLR_CYAN "\033[36m"
+#define CLR_GRAY "\033[90m"
+
+// Log levels
+#define LOG_ERROR(fmt, ...)                                                    \
+  fprintf(stderr, CLR_RED "[ERROR] " fmt CLR_RESET "\n", ##__VA_ARGS__)
+
+#define LOG_WARN(fmt, ...)                                                     \
+  fprintf(stderr, CLR_YELLOW "[WARN ] " fmt CLR_RESET "\n", ##__VA_ARGS__)
+
+#define LOG_INFO(fmt, ...)                                                     \
+  fprintf(stdout, CLR_BLUE "[INFO ] " fmt CLR_RESET "\n", ##__VA_ARGS__)
+
+#define LOG_DEBUG(fmt, ...)                                                    \
+  fprintf(stdout, CLR_GRAY "[DEBUG] " fmt CLR_RESET "\n", ##__VA_ARGS__)
 
 #define MAX_FIELD_LINES 4
 
@@ -14,6 +37,7 @@ typedef struct {
   char Connection[32];
   char Accept_Encoding[128];
   char Accept_Language[128];
+  char Keep_Alive[128];
 } request_headers;
 
 typedef struct {
@@ -36,4 +60,18 @@ typedef struct {
   char field_value[1024];
 } field_values;
 
+/* Struct for keep-alive
+
+   @ handled_request max 10
+   @ timeout 20s
+*/
+struct alive_struct {
+  int fd;
+  bool keep_alive;
+  int handled_requests;
+  time_t last_active;
+
+  char per_connection_buffer[8049];
+  size_t per_connection_buffer_len;
+};
 #endif

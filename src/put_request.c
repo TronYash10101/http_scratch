@@ -1,4 +1,5 @@
 #include "headers/put_request.h"
+#include "headers/get_request.h"
 
 // Create new file_path_buffer and serve it
 
@@ -43,7 +44,7 @@ void put_request(const Irequest_line *restrict request_line,
     error_page_path(status_line->status_code, file_path_buffer);
     respond(file_path_buffer, response_header_buffer,
             response_header_buffer_size, status_line, response_header);
-    printf("Request header error");
+    LOG_ERROR("Request header error");
     return;
   }
 
@@ -53,7 +54,7 @@ void put_request(const Irequest_line *restrict request_line,
     error_page_path(status_line->status_code, file_path_buffer);
     respond(file_path_buffer, response_header_buffer,
             response_header_buffer_size, status_line, response_header);
-    printf("No content found for PUT");
+    LOG_WARN("No content found for PUT");
     return;
   }
 
@@ -84,7 +85,7 @@ void put_request(const Irequest_line *restrict request_line,
       error_page_path(status_line->status_code, file_path_buffer);
       respond(file_path_buffer, response_header_buffer,
               response_header_buffer_size, status_line, response_header);
-      printf("PUT Socket Error");
+      LOG_ERROR("PUT Socket Error");
       return;
     }
 
@@ -94,7 +95,7 @@ void put_request(const Irequest_line *restrict request_line,
       error_page_path(status_line->status_code, file_path_buffer);
       respond(file_path_buffer, response_header_buffer,
               response_header_buffer_size, status_line, response_header);
-      printf("PUT Content To Send Too Large");
+      LOG_WARN("PUT Content To Send Too Large");
       return;
     }
 
@@ -107,7 +108,7 @@ void put_request(const Irequest_line *restrict request_line,
       if (n <= 0) {
         close(new_resource_fd);
         status_line->status_code = 500;
-        printf("PUT Internal Server Error");
+        LOG_ERROR("PUT Internal Server Error");
         return;
       }
       bytes_written += n;
@@ -118,7 +119,8 @@ void put_request(const Irequest_line *restrict request_line,
 
       respond(file_path_buffer, response_header_buffer,
               response_header_buffer_size, status_line, response_header);
-      printf("PUT Success");
+      LOG_INFO("PUT Success");
+
       return;
     }
   } else {
@@ -126,7 +128,7 @@ void put_request(const Irequest_line *restrict request_line,
     error_page_path(status_line->status_code, file_path_buffer);
     respond(file_path_buffer, response_header_buffer,
             response_header_buffer_size, status_line, response_header);
-    printf("PUT Not Found");
+    LOG_WARN("PUT Not Found");
     return;
   }
 }

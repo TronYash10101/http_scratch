@@ -22,7 +22,7 @@ void get_request(const Irequest_line *restrict request_line,
     error_page_path(status_line->status_code, file_path_buffer);
     respond(file_path_buffer, response_header_buffer, response_buffer_size,
             status_line, response_header);
-    printf("Request Header Error");
+    LOG_ERROR("Request Header Error");
     return;
   }
   if (strstr(target_buffer, "..")) {
@@ -50,7 +50,7 @@ void get_request(const Irequest_line *restrict request_line,
     status_line->status_code = 200;
     respond(file_path_buffer, response_header_buffer, response_buffer_size,
             status_line, response_header);
-    printf("GET Success");
+    LOG_INFO("GET Success");
     return;
   } else if (router(target_buffer, request_line->method, file_path_buffer,
                     file_path_buffer_size, response_header) == -1) {
@@ -58,7 +58,7 @@ void get_request(const Irequest_line *restrict request_line,
     error_page_path(status_line->status_code, file_path_buffer);
     respond(file_path_buffer, response_header_buffer, response_buffer_size,
             status_line, response_header);
-    printf("GET Resource not found");
+    LOG_WARN("GET Resource not found");
     return;
   }
 }
