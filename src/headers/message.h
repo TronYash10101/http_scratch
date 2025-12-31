@@ -37,7 +37,9 @@ typedef struct {
   char Connection[32];
   char Accept_Encoding[128];
   char Accept_Language[128];
-  char Keep_Alive[128];
+  char Upgrade[512];
+  char Sec_WebSocket_Key[512];
+  char Sec_WebSocket_Extensions[512];
 } request_headers;
 
 typedef struct {
@@ -65,12 +67,17 @@ typedef struct {
    @ handled_request max 10
    @ timeout 20s
 */
+typedef enum {
+  CONN_HTTP,
+  CONN_WEBSOCKET,
+} ConnectionState;
+
 struct alive_struct {
   int fd;
   bool keep_alive;
   int handled_requests;
   time_t last_active;
-
+  ConnectionState conn_state;
   char per_connection_buffer[8049];
   size_t per_connection_buffer_len;
 };

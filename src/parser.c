@@ -1,11 +1,11 @@
 #include "headers/parser.h"
 #include <stdio.h>
 
-void request_line_parser(const char *restrict request_line_ptr,
-                         Irequest_line *request_line) {
+void request_line_parser(const char *restrict request_line,
+                         Irequest_line *request_line_ptr) {
 
-  sscanf(request_line_ptr, "%9s %1023s %49s", request_line->method,
-         request_line->request_target, request_line->http_version);
+  sscanf(request_line, "%9s %1023s %49s", request_line_ptr->method,
+         request_line_ptr->request_target, request_line_ptr->http_version);
   return;
 }
 
@@ -34,6 +34,16 @@ void fill_headers(request_headers *headers, const char *field_name_buffer,
   } else if (strcasecmp(field_name_buffer, "Accept-Language") == 0) {
     snprintf(headers->Accept_Language, sizeof(headers->Accept_Language), "%s",
              field_value_buffer);
+  } else if (strcasecmp(field_name_buffer, "Upgrade") == 0) {
+    snprintf(headers->Upgrade, sizeof(headers->Upgrade), "%s",
+             field_value_buffer);
+  } else if (strcasecmp(field_name_buffer, "Sec-WebSocket-Key") == 0) {
+    snprintf(headers->Sec_WebSocket_Key, sizeof(headers->Sec_WebSocket_Key),
+             "%s", field_value_buffer);
+  } else if (strcasecmp(field_name_buffer, "Sec-WebSocket-Extensions") == 0) {
+    snprintf(headers->Sec_WebSocket_Extensions,
+             sizeof(headers->Sec_WebSocket_Extensions), "%s",
+             field_value_buffer);
   } else {
   }
 }
@@ -51,7 +61,6 @@ void request_headers_parser(const char *restrict header,
 
     if (header[word_count] == '\0' || header[word_count + 1] == '\0') {
       LOG_ERROR("Malformed header: missing CRLFCRLF\n");
-      abort();
       return;
     }
 
@@ -90,7 +99,8 @@ void request_headers_parser(const char *restrict header,
     /* if (index == -1) {
       break;
     } */
-    fill_headers(headers, field_name_buffer, field_value_buffer);
+    fill_headers(headers, field_name_buffer,
+                 leading_whitespace(field_value_buffer));
 
     memset(field_name_buffer, 0, sizeof(field_name_buffer));
     memset(field_value_buffer, 0, sizeof(field_value_buffer));
@@ -101,21 +111,15 @@ void request_headers_parser(const char *restrict header,
 int is_complete_request(const char *buffer, int *one_request_len) {
   int word_count = 0;
   // printf("%p", one_request_len);
-  for (word_count = 0; buffer[word_count] != '\0'; word_count++) {
-    if (buffer[word_count - 3] == '\r' && buffer[word_count - 2] == '\n' &&
-        buffer[word_count - 1] == '\r' && buffer[word_count] == '\n') {
-      *one_request_len = word_count + 1;
-      return 0;
-    }
-  }
-  /* for (int i = 3; buffer[i] != '\0'; i++) {
+
+  for (int i = 3; buffer[i] != '\0'; i++) {
     if (buffer[i - 3] == '\r' && buffer[i - 2] == '\n' &&
         buffer[i - 1] == '\r' && buffer[i] == '\n') {
 
       *one_request_len = i + 1;
       return 0;
     }
-  } */
+  }
   return -1;
 }
 

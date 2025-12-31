@@ -11,8 +11,8 @@
 #include <string.h>
 #include <strings.h>
 
-void request_line_parser(const char *restrict request_line_ptr,
-                         Irequest_line *request_line);
+void request_line_parser(const char *restrict request_line,
+                         Irequest_line *request_line_ptr);
 
 /* void response_line_parser(const char *restrict http_version, int status_code,
                           const char *restrict reason_pharse,
