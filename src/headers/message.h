@@ -80,5 +80,15 @@ struct alive_struct {
   ConnectionState conn_state;
   char per_connection_buffer[8049];
   size_t per_connection_buffer_len;
+  time_t sent_ping_time;
+  bool sent_ping;
 };
+
+typedef enum {
+  WS_OP_CONTINUATION = 0x0,
+  WS_OP_TEXT = 0x1,
+  WS_OP_CLOSE = 0x8,
+  WS_OP_PING = 0x9,
+  WS_OP_PONG = 0xA,
+} ws_opcode_t;
 #endif

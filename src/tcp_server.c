@@ -136,8 +136,8 @@ int main() {
     }
 
     // Check on existing sockets for action
+    time_t start_time = time(NULL);
     for (int i = 1; i < nfds; i++) {
-      time_t start_time = time(NULL);
 
       if (!(fds[i].revents & POLLIN)) {
         if (start_time - alive_connections[i].last_active > 10 &&
@@ -152,21 +152,30 @@ int main() {
         } else if (start_time - alive_connections[i].last_active > 10 &&
                    alive_connections[i].conn_state == CONN_WEBSOCKET) {
           // handle ping-pong
-          printf("timeout on websocket %d", alive_connections[i].fd);
+          ws_send_response(fds[i].fd, WS_OP_PING, "Are You there");
+          LOG_INFO("SENT PING");
+          if (!alive_connections[i].sent_ping) {
+            alive_connections[i].sent_ping = true;
+            alive_connections[i].sent_ping_time = time(NULL);
+          }
         }
         continue;
       }
 
+      int n;
       alive_connections[i].per_connection_buffer_len = 0;
-      int n = recv(fds[i].fd,
-                   &alive_connections[i].per_connection_buffer +
-                       alive_connections[i].per_connection_buffer_len,
-                   sizeof(alive_connections[i].per_connection_buffer) - 1, 0);
-      alive_connections[i].per_connection_buffer_len += n;
+      n = recv(fds[i].fd,
+               alive_connections[i].per_connection_buffer +
+                   alive_connections[i].per_connection_buffer_len,
+               sizeof(alive_connections[i].per_connection_buffer) -
+                   alive_connections[i].per_connection_buffer_len - 1,
+               0);
 
-      // printf("%s", client_responses.responses[i].buffer);
-      // Look out for this
-      alive_connections[i].last_active = time(NULL);
+      if (n > 0) {
+        alive_connections[i].per_connection_buffer_len += n;
+        alive_connections[i].last_active = time(NULL);
+      }
+
       alive_connections[i].per_connection_buffer
           [alive_connections[i].per_connection_buffer_len] = '\0';
 
@@ -188,14 +197,9 @@ int main() {
         memset(file_path_buffer, 0, sizeof(file_path_buffer));
         memset(body, 0, sizeof(body));
         memset(body, 0, sizeof(body));
-        // memset(client_responses.responses[i].buffer, 0,
-        //        sizeof(client_responses.responses[i].buffer));
 
         if (n < 0) {
-          if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            LOG_ERROR("RECV fd=%d errno=%d", fds[i].fd, errno);
-            continue;
-          } else {
+          if (errno != EAGAIN && errno != EWOULDBLOCK) {
             perror("recv");
             close(fds[i].fd);
             continue;
@@ -314,17 +318,17 @@ int main() {
           LOG_INFO("Buffer State:\n%s",
                    alive_connections[i].per_connection_buffer);
 
-          memmove(&alive_connections[i].per_connection_buffer,
-                  &alive_connections[i].per_connection_buffer + one_request_len,
+          memmove(alive_connections[i].per_connection_buffer,
+                  alive_connections[i].per_connection_buffer + one_request_len,
                   alive_connections[i].per_connection_buffer_len -
                       one_request_len);
+
+          alive_connections[i].per_connection_buffer_len -= one_request_len;
         };
         break;
 
       case CONN_WEBSOCKET:;
-        time_t last_time = {0};
-        time(&last_time);
-
+        time_t last_time = time(NULL);
         if ((fds[i].revents & (POLLERR | POLLHUP | POLLNVAL))) {
           // handle close
           close(fds[i].fd);
@@ -334,28 +338,60 @@ int main() {
           i--;
           continue;
         }
-        // ws_send_response(fds[i].fd);
-        uint8_t client_message[1024];
-        int client_message_len = 0;
-        if ((client_message_len =
-                 ws_recieve_response(alive_connections[i].per_connection_buffer,
-                                     client_message) != -1)) {
-          const unsigned char response[] = "Hello client";
-          uint8_t frame = {0};
-          ws_build_frame(0x1, strlen((const char *)response), response, &frame);
-          ws_send_response(fds[i].fd);
-          alive_connections[i].last_active = last_time;
-        } else if ((client_message_len = ws_recieve_response(
-                        alive_connections[i].per_connection_buffer,
-                        client_message)) == -1) {
 
+        if (n < 0) {
+          if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            perror("recv");
+            close(fds[i].fd);
+            continue;
+          }
+        }
+
+        if (n == 0) {
+          LOG_INFO("WEBSOCKET CLIENT CLOSED fd=%d", fds[i].fd);
+          close(fds[i].fd);
+          continue;
+        }
+
+        if (alive_connections[i].sent_ping &&
+            last_time - alive_connections[i].sent_ping_time > 10) {
+          LOG_WARN("PONG NOT RECIEVED CLOSING CONNECTION");
+          close(fds[i].fd);
+          fds[i] = fds[nfds - 1];
+          alive_connections[i] = alive_connections[nfds - 1];
+          nfds--;
+          i--;
+          continue;
+        }
+
+        uint8_t client_message[1024];
+        ws_opcode_t request_opcode = 0;
+        memset(client_message, 0, sizeof(client_message));
+
+        const char response[] = "Hello client";
+
+        request_opcode = ws_recieve_response(
+            alive_connections[i].per_connection_buffer, client_message);
+
+        if (request_opcode == WS_OP_TEXT ||
+            request_opcode == WS_OP_CONTINUATION) {
+          if ((alive_connections[i].last_active - start_time) % 5 == 0) {
+            ws_send_response(fds[i].fd, WS_OP_TEXT, response);
+            alive_connections[i].last_active = time(NULL);
+          }
+
+        } else if (request_opcode == WS_OP_PING) {
+          ws_send_response(fds[i].fd, WS_OP_PONG,
+                           alive_connections[i].per_connection_buffer);
+
+        } else if (request_opcode == WS_OP_PONG) {
+          LOG_INFO("PONG RECIEVED");
+          alive_connections[i].sent_ping = false;
+
+        } else if (request_opcode == -1) {
           LOG_ERROR(
               "Error Occured(Incorrect opcode or unmasked data recieved)");
-        } else if ((client_message_len =
-                        ws_recieve_response(
-                            alive_connections[i].per_connection_buffer,
-                            client_message) == 1)) {
-
+        } else if (request_opcode == WS_OP_CLOSE) {
           close(fds[i].fd);
           fds[i] = fds[nfds - 1];
           alive_connections[i] = alive_connections[nfds - 1];
@@ -363,9 +399,11 @@ int main() {
           i--;
           LOG_INFO("Closing Websocket Connection");
         }
-        printf("%s", client_message);
+
+        LOG_INFO("%s", client_message);
         fflush(stdout);
         break;
+
       default:
         LOG_ERROR("COULD NOT UNDERSTAND PROTOCOL");
       }

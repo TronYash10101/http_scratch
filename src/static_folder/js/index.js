@@ -13,6 +13,10 @@ socket.addEventListener("open", (event) => {
   socket.send("Hello Server!");
 });
 
+setTimeout(()=>{
+socket.send("msg")
+},12000)
+
 socket.addEventListener("message", (event) =>{
 console.log(event.data)
 })

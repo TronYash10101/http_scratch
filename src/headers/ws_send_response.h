@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void ws_send_response(int fd);
+void ws_send_response(const int fd, const ws_opcode_t response_opcode,
+                      const char *web_socket_res);
 
 #endif

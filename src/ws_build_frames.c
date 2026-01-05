@@ -1,10 +1,10 @@
 #include "headers/ws_build_frames.h"
 
-size_t ws_build_frame(uint8_t opcode, uint64_t payload_len,
+size_t ws_build_frame(uint8_t response_opcode, uint64_t payload_len,
                       const uint8_t *payload, uint8_t frame[]) {
   size_t pos = 0;
 
-  uint8_t first_byte = 0x80 | (opcode & 0x0F);
+  uint8_t first_byte = 0x80 | (response_opcode & 0x0F);
   frame[pos++] = first_byte;
 
   if (payload_len <= 125) {
