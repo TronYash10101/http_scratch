@@ -262,6 +262,7 @@ int main() {
             LOG_ERROR("Could not open file");
             return -1;
           }
+
           while (header_send < header_length) {
             int header_bytes_send =
                 send(fds[i].fd,
@@ -277,6 +278,7 @@ int main() {
             }
             header_send += header_bytes_send;
           }
+
           while ((bytes_read = read(file_socket, response_buffer,
                                     sizeof(response_buffer))) > 0) {
             int bytes_send = 0;
@@ -291,11 +293,13 @@ int main() {
               bytes_send += n;
             }
           }
+
           if (strncasecmp(request_header.Connection, "Close",
                           strlen("Close")) == 0) {
             alive_connections[i].keep_alive = false;
             LOG_DEBUG("KEEP-ALIVE fd=%d disabled", fds[i].fd);
           }
+
           if (!(alive_connections[i].keep_alive) ||
               alive_connections[i].handled_requests > 10) {
             close(fds[i].fd);
