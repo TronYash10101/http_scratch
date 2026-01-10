@@ -15,51 +15,52 @@
 
 // Log levels
 #define LOG_ERROR(fmt, ...)                                                    \
-  fprintf(stderr, CLR_RED "[ERROR] " fmt CLR_RESET "\n", ##__VA_ARGS__)
+    fprintf(stderr, CLR_RED "[ERROR] " fmt CLR_RESET "\n", ##__VA_ARGS__)
 
 #define LOG_WARN(fmt, ...)                                                     \
-  fprintf(stderr, CLR_YELLOW "[WARN ] " fmt CLR_RESET "\n", ##__VA_ARGS__)
+    fprintf(stderr, CLR_YELLOW "[WARN ] " fmt CLR_RESET "\n", ##__VA_ARGS__)
 
 #define LOG_INFO(fmt, ...)                                                     \
-  fprintf(stdout, CLR_BLUE "[INFO ] " fmt CLR_RESET "\n", ##__VA_ARGS__)
+    fprintf(stdout, CLR_BLUE "[INFO ] " fmt CLR_RESET "\n", ##__VA_ARGS__)
 
 #define LOG_DEBUG(fmt, ...)                                                    \
-  fprintf(stdout, CLR_GRAY "[DEBUG] " fmt CLR_RESET "\n", ##__VA_ARGS__)
+    fprintf(stdout, CLR_GRAY "[DEBUG] " fmt CLR_RESET "\n", ##__VA_ARGS__)
 
 #define MAX_FIELD_LINES 4
+#define RESPONSE_BUFFER_SIZE 2048
 
 typedef struct {
-  char Host[256];
-  char Content_Length[32];
-  char Content_Type[128];
-  char User_Agent[512];
-  char Accept[512];
-  char Connection[32];
-  char Accept_Encoding[128];
-  char Accept_Language[128];
-  char Upgrade[512];
-  char Sec_WebSocket_Key[512];
-  char Sec_WebSocket_Extensions[512];
+    char Host[256];
+    char Content_Length[32];
+    char Content_Type[128];
+    char User_Agent[512];
+    char Accept[512];
+    char Connection[32];
+    char Accept_Encoding[128];
+    char Accept_Language[128];
+    char Upgrade[512];
+    char Sec_WebSocket_Key[512];
+    char Sec_WebSocket_Extensions[512];
 } request_headers;
 
 typedef struct {
-  int Content_Length;
-  char Content_Type[1024];
+    int Content_Length;
+    char Content_Type[1024];
 } response_headers;
 
 typedef struct {
-  char method[10];
-  char request_target[1024];
-  char http_version[500];
+    char method[10];
+    char request_target[1024];
+    char http_version[500];
 } Irequest_line;
 
 typedef struct {
-  char http_version[500];
-  int status_code;
+    char http_version[500];
+    int status_code;
 } Istatus_line;
 
 typedef struct {
-  char field_value[1024];
+    char field_value[1024];
 } field_values;
 
 /* Struct for keep-alive
@@ -68,27 +69,28 @@ typedef struct {
    @ timeout 20s
 */
 typedef enum {
-  CONN_HTTP,
-  CONN_WEBSOCKET,
-} ConnectionState;
+    CONN_HTTP,
+    CONN_WEBSOCKET,
+} ProtocolType;
 
 struct alive_struct {
-  int fd;
-  bool keep_alive;
-  int handled_requests;
-  time_t last_active;
-  ConnectionState conn_state;
-  char per_connection_buffer[8049];
-  size_t per_connection_buffer_len;
-  time_t sent_ping_time;
-  bool sent_ping;
+    int fd;
+    bool keep_alive;
+    int handled_requests;
+    time_t last_active;
+    ProtocolType protocol_type;
+    char per_connection_buffer[8049];
+    size_t per_connection_buffer_len;
+    time_t sent_ping_time;
+    bool sent_ping;
+    bool is_busy;
 };
 
 typedef enum {
-  WS_OP_CONTINUATION = 0x0,
-  WS_OP_TEXT = 0x1,
-  WS_OP_CLOSE = 0x8,
-  WS_OP_PING = 0x9,
-  WS_OP_PONG = 0xA,
+    WS_OP_CONTINUATION = 0x0,
+    WS_OP_TEXT = 0x1,
+    WS_OP_CLOSE = 0x8,
+    WS_OP_PING = 0x9,
+    WS_OP_PONG = 0xA,
 } ws_opcode_t;
 #endif

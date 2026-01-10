@@ -15,6 +15,8 @@ SRC = \
 	src/tcp_server.c \
 	src/parser.c \
 	src/get_request.c \
+	src/workers.c \
+	src/job_queue.c \
 	src/errors.c \
 	src/router.c \
 	src/ws_build_frames.c \
