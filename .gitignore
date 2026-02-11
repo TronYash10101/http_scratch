@@ -1,2 +1,2 @@
 src/static_folder/*.bin
-venv/
+.venv/
